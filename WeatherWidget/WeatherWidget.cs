@@ -1,4 +1,6 @@
 ﻿using System;
+using Dalamud.Game.ClientState;
+using Dalamud.Game.Internal;
 using Dalamud.Plugin;
 using FFXIVWeather;
 using WeatherWidget.Attributes;
@@ -24,12 +26,21 @@ namespace WeatherWidget
             this.config = (WeatherWidgetConfiguration)this.pluginInterface.GetPluginConfig() ?? new WeatherWidgetConfiguration();
             this.config.Initialize(this.pluginInterface);
 
+            this.pluginInterface.Framework.OnUpdateEvent += OnFrameworkUpdate;
+
             this.ui = new WeatherWidgetUI(this.config, this.weatherService);
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.Draw;
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.DrawConfig;
             this.pluginInterface.UiBuilder.OnOpenConfigUi += (sender, e) => this.ui.IsConfigVisible = true;
 
             this.commandManager = new PluginCommandManager<WeatherWidget>(this, this.pluginInterface);
+        }
+
+        private void OnFrameworkUpdate(Framework framework)
+        {
+            this.ui.CutsceneActive = this.pluginInterface.ClientState.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
+                                     this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene] ||
+                                     this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene78];
         }
 
         [Command("/weatherwidget")]
@@ -57,6 +68,8 @@ namespace WeatherWidget
                 this.commandManager.Dispose();
 
                 this.pluginInterface.SavePluginConfig(this.config);
+
+                this.pluginInterface.Framework.OnUpdateEvent -= OnFrameworkUpdate;
 
                 this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.Draw;
                 this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.DrawConfig;

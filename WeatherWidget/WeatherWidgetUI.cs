@@ -10,15 +10,21 @@ namespace WeatherWidget
 {
     public class WeatherWidgetUI
     {
-        public bool IsVisible { get; set; }
-        public bool IsConfigVisible { get; set; }
-
         private readonly IDictionary<string, TextureWrap> weatherIcons;
         private readonly FFXIVWeatherService weatherService;
         private readonly WeatherWidgetConfiguration config;
 
         private (Weather, DateTime)[] forecast;
         private long frameCounter;
+        private bool configVisible;
+
+        public bool CutsceneActive { get; set; }
+        public bool IsVisible { get; set; }
+        public bool IsConfigVisible
+        {
+            get => this.configVisible;
+            set => this.configVisible = value;
+        }
 
         public WeatherWidgetUI(WeatherWidgetConfiguration config, FFXIVWeatherService weatherService)
         {
@@ -31,12 +37,12 @@ namespace WeatherWidget
 
         public void DrawConfig()
         {
-            if (!IsConfigVisible)
+            if (!IsConfigVisible || this.config.HideOverlaysDuringCutscenes && CutsceneActive)
                 return;
 
             ImGui.SetNextWindowSize(new Vector2(400, 332), ImGuiCond.Always);
 
-            ImGui.Begin("WeatherWidget Configuration");
+            ImGui.Begin("WeatherWidget Configuration", ref configVisible, ImGuiWindowFlags.NoResize);
             var lockWindows = this.config.LockWindows;
             if (ImGui.Checkbox("Lock plugin windows", ref lockWindows))
             {
@@ -83,7 +89,7 @@ namespace WeatherWidget
                 frameCounter = 0;
             }
 
-            if (!IsVisible)
+            if (!IsVisible || this.config.HideOverlaysDuringCutscenes && CutsceneActive)
                 return;
 
             ImGui.Begin("WeatherWidget Overlay");
