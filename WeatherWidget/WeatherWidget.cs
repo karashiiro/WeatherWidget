@@ -24,8 +24,10 @@ namespace WeatherWidget
             this.config = (WeatherWidgetConfiguration)this.pluginInterface.GetPluginConfig() ?? new WeatherWidgetConfiguration();
             this.config.Initialize(this.pluginInterface);
 
-            this.ui = new WeatherWidgetUI(this.weatherService);
+            this.ui = new WeatherWidgetUI(this.config, this.weatherService);
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.Draw;
+            this.pluginInterface.UiBuilder.OnBuildUi += this.ui.DrawConfig;
+            this.pluginInterface.UiBuilder.OnOpenConfigUi += (sender, e) => this.ui.IsConfigVisible = true;
 
             this.commandManager = new PluginCommandManager<WeatherWidget>(this, this.pluginInterface);
         }
@@ -54,10 +56,11 @@ namespace WeatherWidget
             {
                 this.commandManager.Dispose();
 
-                // You may not want to save a configuration until after you're done tweaking the class layout.
-                //this.pluginInterface.SavePluginConfig(this.config);
+                this.pluginInterface.SavePluginConfig(this.config);
 
                 this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.Draw;
+                this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.DrawConfig;
+                this.pluginInterface.UiBuilder.OnOpenConfigUi -= (sender, e) => this.ui.IsConfigVisible = true;
 
                 this.pluginInterface.Dispose();
             }
