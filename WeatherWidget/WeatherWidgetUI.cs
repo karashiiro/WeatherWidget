@@ -14,7 +14,7 @@ namespace WeatherWidget
         private readonly FFXIVWeatherService weatherService;
         private readonly WeatherWidgetConfiguration config;
 
-        private (Weather, DateTime)[] forecast;
+        private IList<(Weather, DateTime)> forecast;
         private long frameCounter;
         private bool configVisible;
 
