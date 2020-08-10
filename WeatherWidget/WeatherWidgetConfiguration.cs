@@ -1,6 +1,6 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Plugin;
-using FFXIVWeather;
+using Lumina.Data;
 using Newtonsoft.Json;
 
 namespace WeatherWidget
@@ -12,7 +12,12 @@ namespace WeatherWidget
         public bool LockWindows { get; set; }
         public bool ClickThrough { get; set; }
         public bool HideOverlaysDuringCutscenes { get; set; }
-        public LangKind Lang { get; set; }
+        public Language Lang { get; set; }
+
+        public WeatherWidgetConfiguration()
+        {
+            Lang = Language.English;
+        }
 
         [JsonIgnore] private DalamudPluginInterface pluginInterface;
 

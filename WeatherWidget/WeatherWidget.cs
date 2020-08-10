@@ -1,19 +1,31 @@
-﻿using System;
-using Dalamud.Game.ClientState;
+﻿using Dalamud.Game.ClientState;
 using Dalamud.Game.Internal;
+using Dalamud.Hooking;
 using Dalamud.Plugin;
-using FFXIVWeather;
+using FFXIVWeather.Lumina;
+using Lumina;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 using WeatherWidget.Attributes;
+using Cyalume = Lumina.Lumina;
 
 namespace WeatherWidget
 {
     public class WeatherWidget : IDalamudPlugin
     {
         private DalamudPluginInterface pluginInterface;
-        private FFXIVWeatherService weatherService;
+
+        private FFXIVWeatherLuminaService weatherService;
         private PluginCommandManager<WeatherWidget> commandManager;
         private WeatherWidgetConfiguration config;
         private WeatherWidgetUI ui;
+
+        private bool uiHidden;
+        private Hook<ToggleUIDelegate> toggleUIHook;
+
+        private delegate IntPtr ToggleUIDelegate(IntPtr baseAddress, byte unknownByte);
 
         public string Name => "WeatherWidget";
 
@@ -21,10 +33,13 @@ namespace WeatherWidget
         {
             this.pluginInterface = pluginInterface;
 
-            this.weatherService = new FFXIVWeatherService();
-
             this.config = (WeatherWidgetConfiguration)this.pluginInterface.GetPluginConfig() ?? new WeatherWidgetConfiguration();
             this.config.Initialize(this.pluginInterface);
+
+            this.weatherService = new FFXIVWeatherLuminaService(new Cyalume(Path.Combine(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "sqpack"), new LuminaOptions
+            {
+                DefaultExcelLanguage = this.config.Lang,
+            }));
 
             this.pluginInterface.Framework.OnUpdateEvent += OnFrameworkUpdate;
 
@@ -33,6 +48,15 @@ namespace WeatherWidget
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.DrawConfig;
             this.pluginInterface.UiBuilder.OnOpenConfigUi += (sender, e) => this.ui.IsConfigVisible = true;
 
+            // Lifted from FPSPlugin, hook the ScrLk UI toggle; the client condition doesn't handle this
+            var toggleUiPtr = this.pluginInterface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 0F B6 B9 ?? ?? ?? ?? B8 ?? ?? ?? ??");
+            this.toggleUIHook = new Hook<ToggleUIDelegate>(toggleUiPtr, new ToggleUIDelegate((ptr, b) =>
+            {
+                this.uiHidden = (Marshal.ReadByte(ptr, 104008) & 4) == 0;
+                return this.toggleUIHook.Original(ptr, b);
+            }));
+            this.toggleUIHook.Enable();
+
             this.commandManager = new PluginCommandManager<WeatherWidget>(this, this.pluginInterface);
         }
 
@@ -40,7 +64,8 @@ namespace WeatherWidget
         {
             this.ui.CutsceneActive = this.pluginInterface.ClientState.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
                                      this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene] ||
-                                     this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene78];
+                                     this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene78] ||
+                                     this.uiHidden;
         }
 
         [Command("/weatherwidget")]

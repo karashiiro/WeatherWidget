@@ -1,17 +1,18 @@
-﻿using FFXIVWeather;
-using FFXIVWeather.Models;
-using ImGuiNET;
+﻿using ImGuiNET;
 using ImGuiScene;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using FFXIVWeather.Lumina;
+using Lumina.Data;
+using Lumina.Excel.GeneratedSheets;
 
 namespace WeatherWidget
 {
     public class WeatherWidgetUI
     {
         private readonly IDictionary<string, TextureWrap> weatherIcons;
-        private readonly FFXIVWeatherService weatherService;
+        private readonly FFXIVWeatherLuminaService weatherService;
         private readonly WeatherWidgetConfiguration config;
 
         private IList<(Weather, DateTime)> forecast;
@@ -26,7 +27,7 @@ namespace WeatherWidget
             set => this.configVisible = value;
         }
 
-        public WeatherWidgetUI(WeatherWidgetConfiguration config, FFXIVWeatherService weatherService)
+        public WeatherWidgetUI(WeatherWidgetConfiguration config, FFXIVWeatherLuminaService weatherService)
         {
             this.config = config;
             this.weatherService = weatherService;
@@ -64,11 +65,11 @@ namespace WeatherWidget
                 this.config.Save();
             }
 
-            var supportedLanguages = new[] { "English", "German", "French", "Japanese", "Chinese" };
+            var supportedLanguages = new[] { "Japanese", "English", "German", "French", "Chinese" };
             var currentItem = (int)this.config.Lang;
             if (ImGui.Combo("Language", ref currentItem, supportedLanguages, supportedLanguages.Length))
             {
-                this.config.Lang = (LangKind)currentItem;
+                this.config.Lang = (Language)(currentItem + 1);
                 this.config.Save();
             }
 
@@ -82,11 +83,11 @@ namespace WeatherWidget
 
         public void Draw()
         {
-            frameCounter++;
-            if (frameCounter > 200)
+            this.frameCounter++;
+            if (this.frameCounter > 200)
             {
                 this.forecast = this.weatherService.GetForecast("Eulmore", count: 16);
-                frameCounter = 0;
+                this.frameCounter = 0;
             }
 
             if (!IsVisible || this.config.HideOverlaysDuringCutscenes && CutsceneActive)
@@ -95,7 +96,7 @@ namespace WeatherWidget
             ImGui.Begin("WeatherWidget Overlay");
             foreach (var (weather, startTime) in this.forecast)
             {
-                ImGui.Text($"{startTime.ToLongTimeString()}: {weather.GetName(this.config.Lang)}");
+                ImGui.Text($"{startTime.ToLongTimeString()}: {weather.Name}");
             }
             ImGui.End();
         }
