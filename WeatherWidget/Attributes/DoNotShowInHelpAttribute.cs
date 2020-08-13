@@ -3,7 +3,7 @@
 namespace WeatherWidget.Attributes
 {
     [AttributeUsage(AttributeTargets.Method)]
-    public class ShowInHelpAttribute : Attribute
+    public class DoNotShowInHelpAttribute : Attribute
     {
     }
 }

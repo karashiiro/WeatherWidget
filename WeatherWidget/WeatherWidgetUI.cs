@@ -9,7 +9,7 @@ using Lumina.Excel.GeneratedSheets;
 
 namespace WeatherWidget
 {
-    public class WeatherWidgetUI
+    public class WeatherWidgetUi
     {
         private readonly IDictionary<string, TextureWrap> weatherIcons;
         private readonly FFXIVWeatherLuminaService weatherService;
@@ -27,7 +27,7 @@ namespace WeatherWidget
             set => this.configVisible = value;
         }
 
-        public WeatherWidgetUI(WeatherWidgetConfiguration config, FFXIVWeatherLuminaService weatherService)
+        public WeatherWidgetUi(WeatherWidgetConfiguration config, FFXIVWeatherLuminaService weatherService)
         {
             this.config = config;
             this.weatherService = weatherService;
@@ -58,10 +58,10 @@ namespace WeatherWidget
                 this.config.Save();
             }
 
-            var hideDuringCutscences = this.config.HideOverlaysDuringCutscenes;
-            if (ImGui.Checkbox("Hide overlays during cutscenes", ref hideDuringCutscences))
+            var hideDuringCutscenes = this.config.HideOverlaysDuringCutscenes;
+            if (ImGui.Checkbox("Hide overlays during cutscenes", ref hideDuringCutscenes))
             {
-                this.config.HideOverlaysDuringCutscenes = hideDuringCutscences;
+                this.config.HideOverlaysDuringCutscenes = hideDuringCutscenes;
                 this.config.Save();
             }
 
@@ -83,10 +83,12 @@ namespace WeatherWidget
 
         public void Draw()
         {
+            const int forecastCount = 16;
+
             this.frameCounter++;
             if (this.frameCounter > 200)
             {
-                this.forecast = this.weatherService.GetForecast("Eulmore", count: 16);
+                this.forecast = this.weatherService.GetForecast("Eulmore", forecastCount);
                 this.frameCounter = 0;
             }
 
@@ -94,9 +96,11 @@ namespace WeatherWidget
                 return;
 
             ImGui.Begin("WeatherWidget Overlay");
+            ImGui.Columns(forecastCount);
             foreach (var (weather, startTime) in this.forecast)
             {
                 ImGui.Text($"{startTime.ToLongTimeString()}: {weather.Name}");
+                ImGui.NextColumn();
             }
             ImGui.End();
         }

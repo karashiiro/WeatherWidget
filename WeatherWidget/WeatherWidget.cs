@@ -1,13 +1,11 @@
 ﻿using Dalamud.Game.ClientState;
 using Dalamud.Game.Internal;
-using Dalamud.Hooking;
 using Dalamud.Plugin;
 using FFXIVWeather.Lumina;
 using Lumina;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using WeatherWidget.Attributes;
 using Cyalume = Lumina.Lumina;
 
@@ -20,12 +18,8 @@ namespace WeatherWidget
         private FFXIVWeatherLuminaService weatherService;
         private PluginCommandManager<WeatherWidget> commandManager;
         private WeatherWidgetConfiguration config;
-        private WeatherWidgetUI ui;
-
-        private bool uiHidden;
-        private Hook<ToggleUIDelegate> toggleUIHook;
-
-        private delegate IntPtr ToggleUIDelegate(IntPtr baseAddress, byte unknownByte);
+        private WeatherWidgetUi ui;
+        private UiToggleListener uiToggle;
 
         public string Name => "WeatherWidget";
 
@@ -43,19 +37,12 @@ namespace WeatherWidget
 
             this.pluginInterface.Framework.OnUpdateEvent += OnFrameworkUpdate;
 
-            this.ui = new WeatherWidgetUI(this.config, this.weatherService);
+            this.ui = new WeatherWidgetUi(this.config, this.weatherService);
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.Draw;
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.DrawConfig;
             this.pluginInterface.UiBuilder.OnOpenConfigUi += (sender, e) => this.ui.IsConfigVisible = true;
 
-            // Lifted from FPSPlugin, hook the ScrLk UI toggle; the client condition doesn't handle this
-            var toggleUiPtr = this.pluginInterface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 0F B6 B9 ?? ?? ?? ?? B8 ?? ?? ?? ??");
-            this.toggleUIHook = new Hook<ToggleUIDelegate>(toggleUiPtr, new ToggleUIDelegate((ptr, b) =>
-            {
-                this.uiHidden = (Marshal.ReadByte(ptr, 104008) & 4) == 0;
-                return this.toggleUIHook.Original(ptr, b);
-            }));
-            this.toggleUIHook.Enable();
+            this.uiToggle = new UiToggleListener(this.pluginInterface.TargetModuleScanner);
 
             this.commandManager = new PluginCommandManager<WeatherWidget>(this, this.pluginInterface);
         }
@@ -65,13 +52,12 @@ namespace WeatherWidget
             this.ui.CutsceneActive = this.pluginInterface.ClientState.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
                                      this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene] ||
                                      this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene78] ||
-                                     this.uiHidden;
+                                     this.uiToggle.Hidden;
         }
 
         [Command("/weatherwidget")]
         [Aliases("/ww")]
         [HelpMessage("Show/hide the WeatherWidget overlay.")]
-        [ShowInHelp]
         public void ToggleWidget(string command, string args)
         {
             this.ui.IsVisible = !this.ui.IsVisible;
@@ -79,7 +65,6 @@ namespace WeatherWidget
 
         [Command("/wwconfig")]
         [HelpMessage("Show/hide the WeatherWidget configuration.")]
-        [ShowInHelp]
         public void ToggleConfig(string command, string args)
         {
             this.ui.IsConfigVisible = !this.ui.IsConfigVisible;
@@ -88,20 +73,21 @@ namespace WeatherWidget
         #region IDisposable Support
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
-            {
-                this.commandManager.Dispose();
+            if (!disposing) return;
 
-                this.pluginInterface.SavePluginConfig(this.config);
+            this.commandManager.Dispose();
 
-                this.pluginInterface.Framework.OnUpdateEvent -= OnFrameworkUpdate;
+            this.pluginInterface.SavePluginConfig(this.config);
 
-                this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.Draw;
-                this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.DrawConfig;
-                this.pluginInterface.UiBuilder.OnOpenConfigUi -= (sender, e) => this.ui.IsConfigVisible = true;
+            this.pluginInterface.Framework.OnUpdateEvent -= OnFrameworkUpdate;
 
-                this.pluginInterface.Dispose();
-            }
+            this.uiToggle.Dispose();
+
+            this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.Draw;
+            this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.DrawConfig;
+            this.pluginInterface.UiBuilder.OnOpenConfigUi -= (sender, e) => this.ui.IsConfigVisible = true;
+
+            this.pluginInterface.Dispose();
         }
 
         public void Dispose()
