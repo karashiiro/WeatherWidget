@@ -19,7 +19,6 @@ namespace WeatherWidget
         private PluginCommandManager<WeatherWidget> commandManager;
         private WeatherWidgetConfiguration config;
         private WeatherWidgetUi ui;
-        private UiToggleListener uiToggle;
 
         public string Name => "WeatherWidget";
 
@@ -30,29 +29,18 @@ namespace WeatherWidget
             this.config = (WeatherWidgetConfiguration)this.pluginInterface.GetPluginConfig() ?? new WeatherWidgetConfiguration();
             this.config.Initialize(this.pluginInterface);
 
-            this.weatherService = new FFXIVWeatherLuminaService(new Cyalume(Path.Combine(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "sqpack"), new LuminaOptions
+            var sqpackPath = Path.Combine(Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName), "sqpack");
+            this.weatherService = new FFXIVWeatherLuminaService(new Cyalume(sqpackPath, new LuminaOptions
             {
                 DefaultExcelLanguage = this.config.Lang,
             }));
-
-            this.pluginInterface.Framework.OnUpdateEvent += OnFrameworkUpdate;
 
             this.ui = new WeatherWidgetUi(this.config, this.weatherService);
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.Draw;
             this.pluginInterface.UiBuilder.OnBuildUi += this.ui.DrawConfig;
             this.pluginInterface.UiBuilder.OnOpenConfigUi += (sender, e) => this.ui.IsConfigVisible = true;
 
-            this.uiToggle = new UiToggleListener(this.pluginInterface.TargetModuleScanner);
-
             this.commandManager = new PluginCommandManager<WeatherWidget>(this, this.pluginInterface);
-        }
-
-        private void OnFrameworkUpdate(Framework framework)
-        {
-            this.ui.CutsceneActive = this.pluginInterface.ClientState.Condition[ConditionFlag.OccupiedInCutSceneEvent] ||
-                                     this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene] ||
-                                     this.pluginInterface.ClientState.Condition[ConditionFlag.WatchingCutscene78] ||
-                                     this.uiToggle.Hidden;
         }
 
         [Command("/weatherwidget")]
@@ -80,8 +68,6 @@ namespace WeatherWidget
             this.pluginInterface.SavePluginConfig(this.config);
 
             this.pluginInterface.Framework.OnUpdateEvent -= OnFrameworkUpdate;
-
-            this.uiToggle.Dispose();
 
             this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.Draw;
             this.pluginInterface.UiBuilder.OnBuildUi -= this.ui.DrawConfig;

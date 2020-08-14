@@ -11,7 +11,6 @@ namespace WeatherWidget
 
         public bool LockWindows { get; set; }
         public bool ClickThrough { get; set; }
-        public bool HideOverlaysDuringCutscenes { get; set; }
         public Language Lang { get; set; }
 
         public WeatherWidgetConfiguration()
@@ -30,7 +29,6 @@ namespace WeatherWidget
         {
             LockWindows = false;
             ClickThrough = false;
-            HideOverlaysDuringCutscenes = false;
         }
 
         public void Save()

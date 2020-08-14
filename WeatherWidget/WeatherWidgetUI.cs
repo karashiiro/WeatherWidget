@@ -19,7 +19,6 @@ namespace WeatherWidget
         private long frameCounter;
         private bool configVisible;
 
-        public bool CutsceneActive { get; set; }
         public bool IsVisible { get; set; }
         public bool IsConfigVisible
         {
@@ -38,7 +37,7 @@ namespace WeatherWidget
 
         public void DrawConfig()
         {
-            if (!IsConfigVisible || this.config.HideOverlaysDuringCutscenes && CutsceneActive)
+            if (!IsConfigVisible)
                 return;
 
             ImGui.SetNextWindowSize(new Vector2(400, 332), ImGuiCond.Always);
@@ -55,13 +54,6 @@ namespace WeatherWidget
             if (ImGui.Checkbox("Click through plugin windows", ref clickThrough))
             {
                 this.config.ClickThrough = clickThrough;
-                this.config.Save();
-            }
-
-            var hideDuringCutscenes = this.config.HideOverlaysDuringCutscenes;
-            if (ImGui.Checkbox("Hide overlays during cutscenes", ref hideDuringCutscenes))
-            {
-                this.config.HideOverlaysDuringCutscenes = hideDuringCutscenes;
                 this.config.Save();
             }
 
@@ -92,7 +84,7 @@ namespace WeatherWidget
                 this.frameCounter = 0;
             }
 
-            if (!IsVisible || this.config.HideOverlaysDuringCutscenes && CutsceneActive)
+            if (!IsVisible)
                 return;
 
             ImGui.Begin("WeatherWidget Overlay");
